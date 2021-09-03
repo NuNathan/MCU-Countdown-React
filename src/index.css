@@ -48,12 +48,12 @@ code {
 
 .imageContainer {
   display: flex;
-  height: 500px;
+  height: 300px;
   justify-content: center;
   flex-grow: 1;
   align-items: center;
 }
 img {
-  height: 500px;
+  height: 300px;
   align-self: center;
 }
