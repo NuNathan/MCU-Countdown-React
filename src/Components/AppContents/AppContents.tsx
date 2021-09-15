@@ -11,6 +11,7 @@ import {
 } from "../../Helpers/cookieHelper";
 
 let requestedTime: number;
+let trying = false;
 
 let data = [
   {
@@ -22,6 +23,7 @@ let data = [
 ];
 
 function request() {
+  console.log("calling API...")
   requestedTime = new Date().getTime() - 24*60*60*1000
   var myHeaders = new Headers();
   myHeaders.append(
@@ -55,38 +57,50 @@ function request() {
   return false;
 }
 
-var retryTime = 500;
-const retryMultiplier = 2;
-const timer = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
-async function tryAPI(callback: { (): void }) {
-  for (var i = 0; i < 25; i++) {
+function tryAPI(callback: { (): void }) {
     if (localStorageExist()) {
+      trying = false;
       callback();
       return true;
     } else {
       request();
-      await timer((retryTime *= retryMultiplier));
     }
-  }
-  console.log("API could not be reached");
   return false;
+}
+
+function timeoutAPI() {
+  trying = true
+  let attempts = 2;
+  let requests = tryAPI(function () {
+    const localObj = createStorageObject()
+    data = (localObj !== null) ? localObj : data;
+  });
+  if(requests===true) {
+    attempts=1000
+    return
+  }
+  let tryInterval = setInterval(function(){
+    if(attempts>=3) {
+      clearInterval(tryInterval)
+      attempts=2
+      console.log("API Could not be reached")
+      return
+    }
+    requests = tryAPI(function () {
+      const localObj = createStorageObject()
+      data = (localObj !== null) ? localObj : data;
+    });
+    if(requests===true) {
+      attempts=1000
+    }
+    attempts++
+  }, 4000)
 }
 
 function AppContents() {
   const [state, setState] = React.useState({
     episode: data[0].display_value,
   });
-
-  if (!localStorageExist()) {
-    tryAPI(function () {
-      const localObj = createStorageObject()
-      data = (localObj !== null) ? localObj : data;
-    });
-  } else {
-    const localObj = createStorageObject()
-    data = (localObj !== null) ? localObj : data;
-  }
   
   const handleChange = (event: { target: { name: string; value: string; }; }) => {
     const name = event.target.name;
@@ -95,12 +109,13 @@ function AppContents() {
 
   function callbackSec() {
     if(localStorageExist() && state.episode === "Loading...") {
+      const localObj = createStorageObject()
+      data = (localObj !== null) ? localObj : data;
       setState({ ...state, "episode": data[0].display_value })
-    } else if(!localStorageExist()) {
-      tryAPI(function () {
-        const localObj = createStorageObject()
-        data = (localObj !== null) ? localObj : data;
-      });
+    } else if(!localStorageExist() && !trying) {
+      timeoutAPI();
+    }
+    else {
     }
 
     if(new Date().getTime() > parseInt(getLocalStorage(0).expireTime) + 48*60*60*1000) {
