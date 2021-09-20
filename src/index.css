@@ -19,7 +19,6 @@ code {
 
 .episodeTitle {
   color: #eceaeb;
-  position: absolute;
   font-family: 'Bebas Neue', cursive;
   transform: scaleY(1.3);
   font-size: 40px;
